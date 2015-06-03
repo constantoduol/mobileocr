@@ -1,22 +1,26 @@
 package com.quest.mobileocr;
 
 import android.app.Activity;
-import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.hardware.Camera;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.SurfaceView;
 import android.webkit.ConsoleMessage;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.widget.ImageView;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.util.ArrayList;
 
 
 public class MainActivity extends Activity{
@@ -27,7 +31,14 @@ public class MainActivity extends Activity{
 
     private static MainActivity activity;
 
-    private static Camera camera;
+    private boolean safeToTakePicture = false;
+
+    private int REQUEST_IMAGE_CAPTURE = 3;
+
+    private ImageView view;
+
+    private ArrayList<String> delayedCalls;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +63,7 @@ public class MainActivity extends Activity{
         wv.loadUrl("file:///android_asset/index.html");
         plugin = new AbbyyPlugin(this);
         activity = this;
-        initCamera();
+        delayedCalls = new ArrayList();
     }
 
 
@@ -64,38 +75,72 @@ public class MainActivity extends Activity{
         return plugin;
     }
 
-    public void initCamera(){
-        camera = Camera.open();
-        SurfaceView view = new SurfaceView(this);
-        try {
-            camera.setPreviewDisplay(view.getHolder()); // feed dummy surface to surface
-        } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
-        camera.startPreview();
-        camera.takePicture(null, null, null, jpegCallBack);
+    public void startCameraPreview(){
+        Intent intent = new Intent(this,PreviewActivity.class);
+        startActivity(intent);
     }
 
-    Camera.PictureCallback jpegCallBack = new Camera.PictureCallback() {
-        public void onPictureTaken(byte[] data, Camera camera) {
-            // set file destination and file name
-            File fileStorage = MainActivity.getInstance().getPlugin().getFileStorage();
-            File destination = new File(fileStorage, "img1.jpg");
-            try {
-                Bitmap userImage = BitmapFactory.decodeByteArray(data, 0, data.length);
-                // set file out stream
-                FileOutputStream out = new FileOutputStream(destination);
-                // set compress format quality and stream
-                userImage.compress(Bitmap.CompressFormat.JPEG, 90, out);
+//    public void takePhoto(){
+//        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+//        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+//            startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE);
+//        }
+//    }
+//
+//    @Override
+//    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+//        if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
+//            try {
+//                Bundle extras = data.getExtras();
+//                Bitmap imageBitmap = (Bitmap) extras.get("data");
+//                //File image = new File(plugin.getFileStorage(), "img.jpg");
+//                //image.createNewFile();
+//                //FileOutputStream out = new FileOutputStream(image);
+//                //imageBitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
+//                //String finalPath = "file://"+image.getAbsolutePath();
+//                String resp = plugin.recogniseText(imageBitmap);
+//                resp = resp.replaceAll("[^\\w\\s]","");
+//                wv.loadUrl("javascript:callback('"+resp+"')");
+//                delayedCall("javascript:callback('"+resp+"')"); //this was added because the page takes time
+//                //wv.loadUrl("javascript:test()");
+//                //to load and sometimes the javascript has not loaded
+//                Log.i("OCR", resp);
+//            }
+//            catch(Exception e){
+//               e.printStackTrace();
+//            }
+//        }
+//    }
 
-            } catch (FileNotFoundException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+
+
+
+
+
+
+    public void delayedCall(String js){
+        //first of all check whether the document has loaded
+        //if loaded execute the call
+        //if it has not loaded schedule a delayed call
+        delayedCalls.add(js);
+
+    }
+
+
+
+    public void executeDelayedCalls(){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                for(String js : delayedCalls){
+                    wv.loadUrl(js);
+                }
+                delayedCalls = new ArrayList<String>();
             }
+        });
 
-        }
-    };
+    }
+
 
 }
 

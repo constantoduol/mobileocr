@@ -121,9 +121,8 @@ public class AbbyyPlugin implements RecognitionCallback {
         return Uri.parse(file.getAbsolutePath());
 	}
 
-	public String recogniseText(String uri){
-		System.err.println("Recognising Text");
-		try {
+    public String recogniseText(String uri){
+        try {
 			//Get the image uri argument from the json.
 			_imageUri = Uri.parse(uri);
 			if (_imageUri == null) {
@@ -131,12 +130,30 @@ public class AbbyyPlugin implements RecognitionCallback {
 			} else {
 				System.err.println("uri is not null");
 			}
+            //Change to synchronous method
+            startRecognition();
+
+            return startRecognition();
+        } catch(Exception e) {
+            System.err.println("Exception: "+e.getMessage());
+            return "Error: performOCR();;"+e.getMessage();
+        }
+    }
+
+	public String recogniseText(Bitmap image){
+		try {
+//			//Get the image uri argument from the json.
+//			_imageUri = Uri.parse(uri);
+//			if (_imageUri == null) {
+//				throw new IllegalArgumentException("Missing image uri");
+//			} else {
+//				System.err.println("uri is not null");
+//			}
 
 			//Change to synchronous method
-			startRecognition();
+			startRecognition(image);
 
-			JSONObject res = startRecognition();
-			return res.toString();
+			return startRecognition(image);
 		} catch(Exception e) {
 			System.err.println("Exception: "+e.getMessage());
 			return "Error: performOCR();;"+e.getMessage();
@@ -155,67 +172,123 @@ public class AbbyyPlugin implements RecognitionCallback {
 		//Do nothing for now
 	}
 
-	private JSONObject startRecognition() {
+    private String startRecognition(Bitmap image){
+        //Recognition context - get from cordova
+        Context context = activity.getApplicationContext();
+
+        //Recognition configs
+        final RecognitionConfiguration recognitionConfiguration = new RecognitionConfiguration();
+
+        //Image processing options
+        int imageProcessingOptions = RecognitionConfiguration.ImageProcessingOptions.PROHIBIT_VERTICAL_CJK_TEXT;
+        imageProcessingOptions |= RecognitionConfiguration.ImageProcessingOptions.DETECT_PAGE_ORIENTATION;
+
+        //Set the img proc options of the config
+        recognitionConfiguration.setImageProcessingOptions( imageProcessingOptions );
+
+        //Set recognition mode - FULL vs FAST
+        recognitionConfiguration.setRecognitionMode( RecognitionConfiguration.RecognitionMode.FULL );
+        recognitionConfiguration.setRecognitionLanguages( RecognitionContext
+                .getRecognitionLanguages( RecognitionTarget.TEXT ) );
+
+
+        // Get a recognition manager from the Engine.
+        final RecognitionManager recognitionManager =
+                Engine.getInstance().getRecognitionManager( recognitionConfiguration );
+
+
+        if (image != null) {
+            System.err.println("Image is retrieved");
+        }
+
+        // Reset the stored rotation type value
+        RecognitionContext.setRotationType( RotationType.NO_ROTATION );
+
+        String result = null;
+        try {
+            Object resultObj = recognitionManager.recognizeText( image, this );
+            if (resultObj == null) {
+                throw new NullPointerException("resultObj is null");
+            }
+
+            result = resultObj.toString();
+
+
+        } catch( final Throwable exception ) {
+            //Will need error handling- remove loggin for now
+            Log.w( "AbbyyPlugin", "Failed to recognize image", exception );
+
+            //Return the exception
+            result = "!#error!#";
+        } finally {
+            try {
+                //Will need to close.
+                recognitionManager.close();
+            } catch( final IOException e ) {
+
+            }
+            //Return the result
+            return result;
+        }
+    }
+
+	private String startRecognition() {
 		//Recognition context - get from cordova
 		Context context = activity.getApplicationContext();
 
 		//Recognition configs
 		final RecognitionConfiguration recognitionConfiguration = new RecognitionConfiguration();
-		
+
 		//Image processing options
 		int imageProcessingOptions = RecognitionConfiguration.ImageProcessingOptions.PROHIBIT_VERTICAL_CJK_TEXT;
 		imageProcessingOptions |= RecognitionConfiguration.ImageProcessingOptions.DETECT_PAGE_ORIENTATION;
 
 		//Set the img proc options of the config
 		recognitionConfiguration.setImageProcessingOptions( imageProcessingOptions );
-		
+
 		//Set recognition mode - FULL vs FAST
-		recognitionConfiguration.setRecognitionMode( RecognitionConfiguration.RecognitionMode.FAST ); 
+		recognitionConfiguration.setRecognitionMode( RecognitionConfiguration.RecognitionMode.FULL );
 		recognitionConfiguration.setRecognitionLanguages( RecognitionContext
 				.getRecognitionLanguages( RecognitionTarget.TEXT ) );
 
 
-		// Get a recognition manager from the Engine. 
+		// Get a recognition manager from the Engine.
 		final RecognitionManager recognitionManager =
 				Engine.getInstance().getRecognitionManager( recognitionConfiguration );
 
-		// Get bitmap of image from recognition context. 
+		// Get bitmap of image from recognition context.
 		final Bitmap image = RecognitionContext.getImage( this._imageUri );
-		
+
 		if (image != null) {
 			System.err.println("Image is retrieved");
 		}
 
 		// Reset the stored rotation type value
-		RecognitionContext.setRotationType( RotationType.NO_ROTATION ); 
+		RecognitionContext.setRotationType( RotationType.NO_ROTATION );
 
-		JSONObject result = new JSONObject();
+		String result = null;
 		try {
-			Object resultObj = recognitionManager.recognizeText( image, this ); 
+			Object resultObj = recognitionManager.recognizeText( image, this );
 			if (resultObj == null) {
 				throw new NullPointerException("resultObj is null");
 			}
 
-			String resultString = resultObj.toString();
+			result = resultObj.toString();
 
-			//Build json object
-			result.put("status","success");
-			result.put("text",resultString);
 
 		} catch( final Throwable exception ) {
 			//Will need error handling- remove loggin for now
 			Log.w( "AbbyyPlugin", "Failed to recognize image", exception );
 
 			//Return the exception
-			result.put("status","error");
-			result.put("msg", exception.getMessage());
+			result = "!#error!#";
 		} finally {
 			try {
-				//Will need to close. 
+				//Will need to close.
 				recognitionManager.close();
 			} catch( final IOException e ) {
 
-			}	
+			}
 			//Return the result
 			return result;
 		}

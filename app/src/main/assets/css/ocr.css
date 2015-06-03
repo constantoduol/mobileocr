@@ -1,0 +1,38 @@
+  body {
+    background-color: rgba(0,0,0,0.8);
+  }
+
+  .main_button {
+    border-radius:150px;
+    width : 150px;
+    height: 150px;
+    font-size:15px;
+    color:#fff;
+    text-align:center;
+    background:#51CBEE;
+    border : solid #51CBEE 5px;
+    position: absolute;
+    line-height: 120px;
+   }
+
+
+
+
+
+@keyframes fade {
+    from { opacity: 1.0; }
+    50% { opacity: 0.4; }
+    to { opacity: 1.0; }
+}
+ 
+@-webkit-keyframes fade {
+    from { opacity: 1.0; }
+    50% { opacity: 0.4; }
+    to { opacity: 1.0; }
+}
+ 
+.blink {
+    animation:fade 3000ms infinite;
+    -webkit-animation:fade 3000ms infinite;
+}
+

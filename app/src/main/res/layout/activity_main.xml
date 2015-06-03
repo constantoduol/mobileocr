@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity" >
 
-
     <WebView
         android:id="@+id/html_viewer"
         android:layout_height="match_parent"
