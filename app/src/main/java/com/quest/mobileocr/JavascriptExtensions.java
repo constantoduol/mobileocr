@@ -14,9 +14,4 @@ public class JavascriptExtensions {
         MainActivity.getInstance().startCameraPreview();
     }
 
-    @JavascriptInterface
-    public void execute(){
-        MainActivity.getInstance().executeDelayedCalls();
-    }
-
 }

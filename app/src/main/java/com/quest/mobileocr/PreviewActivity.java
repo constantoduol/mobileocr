@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.hardware.Camera;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
@@ -17,6 +18,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Surface;
 import android.view.View;
+import android.view.WindowManager;
+import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.TextView;
@@ -46,7 +49,11 @@ public class PreviewActivity extends Activity {
 
     private Accelerometer meter;
 
-    private final int CAMERA_FREQUENCY = 1000;
+    private final int CAMERA_FREQUENCY = 300;
+
+    private final int FUTURE_PICTURE_DELAY = 3000;
+
+    private WebView infoView;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -60,6 +67,8 @@ public class PreviewActivity extends Activity {
         mPreview = new CameraPreview(this, mCamera);
         preview = (FrameLayout) findViewById(R.id.camera_preview);
 
+        infoView = (WebView) findViewById(R.id.info_view);
+        infoView.setBackgroundColor(0x80000000);
         preview.addView(mPreview);
         takeFuturePicture();
 
@@ -67,6 +76,8 @@ public class PreviewActivity extends Activity {
         mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         meter = new Accelerometer();
         mSensorManager.registerListener(meter, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);//prevent screen from dimming
     }
 
 
@@ -110,7 +121,7 @@ public class PreviewActivity extends Activity {
                 }
             }
         };
-        timer.schedule(task, 0, CAMERA_FREQUENCY);
+        timer.schedule(task,FUTURE_PICTURE_DELAY, CAMERA_FREQUENCY);
     }
 
     /**
@@ -132,16 +143,10 @@ public class PreviewActivity extends Activity {
         public void onPictureTaken(byte[] data, Camera camera) {
             Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
             String resp = MainActivity.getInstance().getPlugin().recogniseText(bitmap);
-
             Log.i("apppp",resp);
-
+            addText(resp);
             //FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(600, 200);
-            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.FILL_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
-            TextView text = new TextView(PreviewActivity.this);
-            text.setText(resp);
-            text.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
-            preview.addView(text, params);
-
+            //put the text in the webview
             camera.startPreview(); //start preview to take the next picture
 
             mPreview.setSafeToTakePicture(true);
@@ -149,5 +154,10 @@ public class PreviewActivity extends Activity {
         }
 
     };
+
+    private void addText(String text){
+        infoView.loadData(text,"text/html",null);
+    }
+
 
 }

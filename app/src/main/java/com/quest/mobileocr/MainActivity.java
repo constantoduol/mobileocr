@@ -31,13 +31,6 @@ public class MainActivity extends Activity{
 
     private static MainActivity activity;
 
-    private boolean safeToTakePicture = false;
-
-    private int REQUEST_IMAGE_CAPTURE = 3;
-
-    private ImageView view;
-
-    private ArrayList<String> delayedCalls;
 
 
     @Override
@@ -63,7 +56,7 @@ public class MainActivity extends Activity{
         wv.loadUrl("file:///android_asset/index.html");
         plugin = new AbbyyPlugin(this);
         activity = this;
-        delayedCalls = new ArrayList();
+
     }
 
 
@@ -118,28 +111,6 @@ public class MainActivity extends Activity{
 
 
 
-    public void delayedCall(String js){
-        //first of all check whether the document has loaded
-        //if loaded execute the call
-        //if it has not loaded schedule a delayed call
-        delayedCalls.add(js);
-
-    }
-
-
-
-    public void executeDelayedCalls(){
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                for(String js : delayedCalls){
-                    wv.loadUrl(js);
-                }
-                delayedCalls = new ArrayList<String>();
-            }
-        });
-
-    }
 
 
 }
