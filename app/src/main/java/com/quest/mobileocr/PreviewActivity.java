@@ -19,6 +19,9 @@ import android.view.MenuItem;
 import android.view.Surface;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.ConsoleMessage;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -67,8 +70,8 @@ public class PreviewActivity extends Activity {
         mPreview = new CameraPreview(this, mCamera);
         preview = (FrameLayout) findViewById(R.id.camera_preview);
 
-        infoView = (WebView) findViewById(R.id.info_view);
-        infoView.setBackgroundColor(0x80000000);
+        initWebView();
+
         preview.addView(mPreview);
         takeFuturePicture();
 
@@ -78,6 +81,28 @@ public class PreviewActivity extends Activity {
         mSensorManager.registerListener(meter, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
 
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);//prevent screen from dimming
+    }
+
+
+    private void initWebView(){
+        infoView = (WebView) findViewById(R.id.info_view);
+        infoView.setBackgroundColor(0x00000000);
+        WebSettings settings = infoView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setDatabasePath("/data/data/" + infoView.getContext().getPackageName() + "/databases/");
+        WebChromeClient webChrome = new WebChromeClient() {
+            @Override
+            public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+                Log.i("JCONSOLE", consoleMessage.lineNumber()
+                        + ": " + consoleMessage.message());
+                return true;
+            }
+        };
+        infoView.addJavascriptInterface(new JavascriptExtensions(), "jse");
+        infoView.setWebChromeClient(webChrome);
+        infoView.loadUrl("file:///android_asset/template.html");
     }
 
 
@@ -140,24 +165,70 @@ public class PreviewActivity extends Activity {
     private Camera.PictureCallback mPicture = new Camera.PictureCallback() {
 
         @Override
-        public void onPictureTaken(byte[] data, Camera camera) {
-            Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
-            String resp = MainActivity.getInstance().getPlugin().recogniseText(bitmap);
-            Log.i("apppp",resp);
-            addText(resp);
-            //FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(600, 200);
-            //put the text in the webview
-            camera.startPreview(); //start preview to take the next picture
+        public void onPictureTaken(final byte[] data, final Camera camera) {
+            Thread th = new Thread(){
+                public void run(){
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
+                    String resp = MainActivity.getInstance().getPlugin().recogniseText(bitmap);
+                    Log.i("apppp",resp);
+                    extractMeaning(resp);
+                    //put the text in the webview
+                    camera.startPreview(); //start preview to take the next picture
 
-            mPreview.setSafeToTakePicture(true);
+                    mPreview.setSafeToTakePicture(true);
+                }
+            };
+            infoView.loadUrl("javascript:app.animate()");
+            th.start();
 
         }
 
     };
 
-    private void addText(String text){
-        infoView.loadData(text,"text/html",null);
+
+
+
+
+    /**
+     *  detection strategies
+     *    0. remove any garbage characters, any extra characters that are space separated qualify as garbage
+     *       a number or letter cannot contain more than one special character e.g a number may be
+     *    1. check for the existence of letters or digits or both
+     *    2. if t
+     */
+
+    private void extractMeaning(String text){
+        final String cleanText = text.replaceAll("[^\\w\\s]","");
+        Log.i("apppp", cleanText);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                infoView.loadUrl("javascript:animate.stopAll()");
+                infoView.loadUrl("javascript:app.loadContent("+cleanText+")");//display the text
+            }
+        });
+
     }
 
 
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
